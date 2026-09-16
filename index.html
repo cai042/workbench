@@ -1,0 +1,2365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>个人工作台 · todolist 与项目池</title>
+<!-- 本工作台通过 WorkBuddy 资料库能力（library skill）搭建、存储和部署 -->
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+  font-size: 14px; color: #1f2329; background: #f5f6f7;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; padding: 0; color: inherit; }
+input { font-family: inherit; }
+.hidden { display: none !important; }
+
+/* ---------- 布局 ---------- */
+.app { display: flex; height: 100vh; overflow: hidden; }
+.sidebar {
+  flex: 0 0 208px; background: #1f2329; color: #c9ced6;
+  display: flex; flex-direction: column; padding: 0; z-index: 20;
+}
+.sidebar-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 18px 16px; border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.brand-mark {
+  width: 30px; height: 30px; border-radius: 8px; flex: 0 0 auto;
+  background: linear-gradient(135deg, #1677ff, #3f9bff);
+  display: flex; align-items: center; justify-content: center; color: #fff;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.brand-title { font-size: 14px; font-weight: 600; color: #fff; }
+.brand-sub { font-size: 11px; color: #767f8c; }
+.sidebar-nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-radius: 8px; font-size: 14px; color: #c9ced6; text-align: left;
+  transition: background .15s, color .15s; min-height: 44px;
+}
+.nav-item:hover { background: rgba(255,255,255,.07); color: #fff; }
+.nav-item.active { background: #1677ff; color: #fff; font-weight: 500; }
+.nav-item svg { flex: 0 0 auto; }
+.sidebar-foot { padding: 12px 16px; font-size: 11px; color: #5d6673; border-top: 1px solid rgba(255,255,255,.08); }
+
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  flex: 0 0 auto; height: 56px; background: #fff; border-bottom: 1px solid #e5e7eb;
+  display: flex; align-items: center; gap: 12px; padding: 0 20px;
+}
+.topbar-title { font-size: 16px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+
+.sync-pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px;
+  border-radius: 13px; font-size: 12px; background: #f2f3f5; color: #4e5969; white-space: nowrap;
+}
+.sync-pill .sd { width: 6px; height: 6px; border-radius: 3px; background: currentColor; }
+.sync-pill.syncing { background: #fff7e8; color: #ff8f1f; }
+.sync-pill.offline { background: #fef0f0; color: #f53f3f; }
+.sync-pill.synced { background: #e8f7ea; color: #00b42a; }
+
+.btn-ghost {
+  height: 30px; padding: 0 12px; border-radius: 6px; font-size: 13px;
+  color: #4e5969; border: 1px solid #e5e7eb; background: #fff; min-height: 30px;
+}
+.btn-ghost:hover { background: #f5f6f7; color: #1677ff; border-color: #cfe0ff; }
+.btn-ghost.danger:hover { color: #f53f3f; border-color: #ffd4d4; background: #fef7f7; }
+.btn-primary {
+  height: 32px; padding: 0 14px; border-radius: 6px; font-size: 13px;
+  background: #1677ff; color: #fff; font-weight: 500;
+}
+.btn-primary:hover { background: #0e63e0; }
+.btn-primary.sm { height: 28px; padding: 0 10px; font-size: 12px; }
+
+.content { flex: 1; overflow-y: auto; padding: 16px 20px 48px; -webkit-overflow-scrolling: touch; }
+.page { max-width: 1180px; margin: 0 auto; }
+
+.card { background: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(31,35,41,.04); }
+.card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.card-title { font-size: 14px; font-weight: 600; flex: 1; min-width: 0; }
+.card-sub { font-size: 12px; color: #8a9099; font-weight: 400; }
+
+/* ---------- 时间轴筛选器 ---------- */
+.tf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.tf-row:last-child { margin-bottom: 0; }
+.tf-label { flex: 0 0 30px; font-size: 12px; color: #8a9099; }
+.tf-scroll { flex: 1; display: flex; gap: 6px; overflow-x: auto; padding: 3px 1px; scrollbar-width: thin; }
+.tf-scroll::-webkit-scrollbar { height: 5px; }
+.tf-scroll::-webkit-scrollbar-thumb { background: #dcdfe4; border-radius: 3px; }
+.chip {
+  flex: 0 0 auto; height: 30px; padding: 0 12px; border-radius: 15px;
+  background: #f2f3f5; color: #4e5969; font-size: 13px;
+  border: 1px solid transparent; transition: all .15s; white-space: nowrap;
+}
+.chip:hover { background: #e8eaed; }
+.chip.active { background: #1677ff; color: #fff; border-color: #1677ff; }
+.day-chip {
+  width: 46px; height: 46px; padding: 0; border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+}
+.day-chip .dc-num { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.day-chip .dc-wk { font-size: 10px; color: #8a9099; line-height: 1.2; }
+.day-chip .dc-dot { width: 4px; height: 4px; border-radius: 2px; background: #1677ff; margin-top: 1px; }
+.day-chip .dc-dot.todo { background: #f53f3f; }
+.day-chip.active .dc-dot.todo { background: #fff; }
+.day-chip.active .dc-wk, .day-chip.active .dc-dot { color: rgba(255,255,255,.9); background: #fff; }
+.day-chip.active .dc-wk { background: transparent; }
+.day-chip.today { border-color: #1677ff; color: #1677ff; }
+
+/* ---------- 日期待办（AI 从记录中识别日期生成） ---------- */
+.today-card { border-left: 3px solid #1677ff; }
+.today-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.today-title { font-size: 14px; font-weight: 600; }
+.today-count { font-size: 12px; color: #fff; background: #1677ff; border-radius: 9px; padding: 1px 8px; }
+.today-count.zero { background: #c9cdd4; }
+.today-count.all-done { background: #00b42a; }
+.today-sub { font-size: 11px; color: #a6abb3; margin-left: auto; }
+.today-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.today-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: 6px; background: #f7f8fa;
+}
+.today-item.done { background: #f3f9f4; }
+.today-item.done .ti-text { color: #8a9099; text-decoration: line-through; }
+.ti-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: #1677ff; }
+.today-item.done .ti-dot { background: #00b42a; }
+.ti-text { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ti-tag { flex: 0 0 auto; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #fff4e6; color: #d97706; }
+.ti-src { flex: 0 0 auto; font-size: 11px; color: #a6abb3; cursor: pointer; }
+.ti-src:hover { color: #1677ff; text-decoration: underline; }
+.ti-btn {
+  flex: 0 0 auto; height: 28px; padding: 0 12px; border-radius: 6px;
+  background: #fff; color: #1677ff; border: 1px solid #cfe0ff; font-size: 12px;
+}
+.ti-btn:hover { background: #1677ff; color: #fff; }
+.ti-btn.ghost { color: #86909c; border-color: #e5e6eb; }
+.ti-btn.ghost:hover { background: #f53f3f; color: #fff; border-color: #f53f3f; }
+.today-more { display: flex; align-items: center; gap: 8px; }
+.today-more:empty { display: none; }
+.tm-text { font-size: 12px; color: #d97706; }
+.tm-btn { font-size: 12px; color: #1677ff; background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer; }
+.today-empty { font-size: 12px; color: #a6abb3; padding: 6px 0; line-height: 1.8; }
+.today-empty b { color: #4e5969; font-weight: 600; }
+
+/* ---------- 记录列表 ---------- */
+.rec-list { display: flex; flex-direction: column; }
+.rec-card {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid #eef0f2;
+  margin-bottom: 8px; background: #fff; transition: border-color .15s, background .15s;
+}
+.rec-card:last-child { margin-bottom: 0; }
+.rec-card:hover { border-color: #dfe3e8; }
+.rec-line { display: flex; align-items: center; gap: 8px; }
+.rec-check-wrap {
+  flex: 0 0 auto; width: 34px; height: 34px; display: flex;
+  align-items: center; justify-content: center; cursor: pointer; margin-left: -4px;
+}
+.rec-check { position: absolute; opacity: 0; width: 0; height: 0; }
+.rec-check-visual {
+  width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid #c9cdd4;
+  display: flex; align-items: center; justify-content: center; color: transparent;
+  transition: all .15s; background: #fff;
+}
+.rec-check:checked + .rec-check-visual { background: #1677ff; border-color: #1677ff; color: #fff; }
+.rec-content-input {
+  flex: 1; min-width: 0; height: 34px; border: none; border-bottom: 1px solid #e5e7eb;
+  background: transparent; font-size: 16px; color: #1f2329; outline: none; padding: 2px 2px;
+  transition: border-color .15s;
+}
+.rec-content-input:focus { border-bottom-color: #1677ff; }
+.rec-content-input::placeholder { color: #b8bcc4; font-size: 14px; }
+.rec-card.done .rec-content-input { color: #a5abb4; text-decoration: line-through; }
+.rec-code-chip {
+  flex: 0 0 auto; display: none; font-size: 11px; padding: 2px 7px; border-radius: 4px;
+  background: #eaf3ff; color: #1677ff; font-weight: 600; letter-spacing: .3px;
+}
+.rec-code-chip.show { display: inline-block; }
+.rec-icons { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 6px; display: inline-flex;
+  align-items: center; justify-content: center; color: #9aa1ab;
+  transition: background .15s, color .15s; flex: 0 0 auto;
+}
+.icon-btn:hover { background: #f2f3f5; color: #1677ff; }
+.act-note.on { color: #1677ff; background: #eaf3ff; }
+.rec-note-wrap { margin-top: 8px; padding-left: 30px; display: flex; flex-direction: column; gap: 6px; }
+.note-row { display: flex; align-items: center; gap: 6px; }
+.note-input {
+  flex: 1; min-width: 0; height: 36px; border: 1px solid #e5e7eb; border-radius: 6px;
+  padding: 0 10px; font-size: 16px; outline: none; background: #fafbfc; color: #1f2329;
+}
+.note-input:focus { border-color: #1677ff; background: #fff; }
+.note-add {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 5px;
+  height: 30px; padding: 0 10px; border-radius: 6px; color: #1677ff;
+  font-size: 12px; background: #f0f6ff;
+}
+.note-add:hover { background: #e0edff; }
+.rec-photo-wrap { margin-top: 8px; padding-left: 30px; display: flex; flex-wrap: wrap; gap: 6px; }
+.rec-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; display: block; }
+.rec-meta { display: none; }
+
+/* ---------- 照片预览区 ---------- */
+.photo-groups { display: flex; flex-direction: column; gap: 16px; }
+.photo-group { border-left: 3px solid #1677ff; padding-left: 12px; }
+.pg-head { font-size: 13px; color: #4e5969; margin-bottom: 8px; line-height: 1.5; }
+.pg-body { display: flex; flex-wrap: wrap; gap: 10px; }
+.pg-item { position: relative; }
+.pg-item img {
+  width: 96px; height: 96px; object-fit: cover; border-radius: 8px;
+  border: 1px solid #e5e7eb; display: block; cursor: zoom-in;
+}
+.pg-del {
+  position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 11px;
+  background: rgba(31,35,41,.62); color: #fff; font-size: 14px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.pg-del:hover { background: #f53f3f; }
+
+/* ---------- 项目池 ---------- */
+.proj-layout { display: flex; gap: 14px; align-items: flex-start; }
+.proj-menu { flex: 0 0 240px; background: #fff; border-radius: 10px; padding: 12px; box-shadow: 0 1px 2px rgba(31,35,41,.04); }
+.proj-menu-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.proj-menu-title { flex: 1; font-size: 14px; font-weight: 600; }
+.proj-list { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; }
+.proj-item {
+  display: flex; align-items: center; gap: 8px; padding: 10px 10px;
+  border-radius: 8px; cursor: pointer; min-height: 44px;
+}
+.proj-item:hover { background: #f5f6f7; }
+.proj-item.active { background: #eaf3ff; }
+.proj-name { flex: 1; min-width: 0; font-size: 14px; color: #1f2329; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj-item.active .proj-name { color: #1677ff; font-weight: 500; }
+.proj-supplier { flex: 0 1 auto; max-width: 45%; font-size: 11px; color: #8a9099; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj-item.active .proj-supplier { color: #1677ff; }
+.proj-created { display: none; }
+.proj-del { flex: 0 0 auto; width: 22px; height: 22px; padding: 0; border: none; border-radius: 5px; background: transparent; color: #8a9099; font-size: 15px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s ease; }
+.proj-item:hover .proj-del { opacity: 1; }
+.proj-del:hover { background: #fdebec; color: #e54545; }
+.proj-del:focus { opacity: 1; outline: none; }
+.proj-timeline-wrap { flex: 1; min-width: 0; background: #fff; border-radius: 10px; padding: 16px 20px 20px; box-shadow: 0 1px 2px rgba(31,35,41,.04); }
+.proj-tl-head { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #eef0f2; margin-bottom: 18px; }
+.proj-tl-title { font-size: 16px; font-weight: 600; }
+.proj-tl-meta { font-size: 12px; color: #8a9099; }
+.proj-timeline { position: relative; padding-left: 26px; }
+.proj-timeline::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: #e9ebee; }
+.tl-item { position: relative; padding-bottom: 20px; }
+.tl-item:last-child { padding-bottom: 0; }
+.tl-dot {
+  position: absolute; left: -26px; top: 5px; width: 10px; height: 10px; border-radius: 5px;
+  background: #1677ff; box-shadow: 0 0 0 3px #eaf3ff;
+}
+.tl-item.tl-done .tl-dot { background: #00b42a; box-shadow: 0 0 0 3px #e8f7ea; }
+.tl-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.tl-date { font-size: 12px; color: #8a9099; }
+.tl-state { font-size: 11px; padding: 1px 7px; border-radius: 4px; background: #f2f3f5; color: #8a9099; }
+.tl-item.tl-done .tl-state { background: #e8f7ea; color: #00b42a; }
+.tl-content { font-size: 14px; line-height: 1.6; color: #1f2329; word-break: break-word; }
+.tl-notes { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.tl-note { font-size: 13px; color: #646a73; line-height: 1.6; padding-left: 14px; position: relative; }
+.tl-note::before { content: ''; position: absolute; left: 2px; top: 8px; width: 4px; height: 4px; border-radius: 2px; background: #c9cdd4; }
+.tl-photos { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+.tl-photos img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid #e5e7eb; display: block; cursor: zoom-in; }
+
+/* ---------- 空状态 ---------- */
+.empty { padding: 26px 16px; text-align: center; color: #9aa1ab; font-size: 13px; line-height: 1.7; }
+
+/* ---------- 弹窗 / 提示 ---------- */
+.mask {
+  position: fixed; inset: 0; background: rgba(31,35,41,.45);
+  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 300;
+}
+.modal {
+  background: #fff; border-radius: 12px; width: 100%; max-width: 420px;
+  padding: 20px; box-shadow: 0 12px 40px rgba(31,35,41,.2); max-height: 86vh; overflow-y: auto;
+}
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.modal-body { font-size: 14px; color: #4e5969; line-height: 1.75; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.modal-foot button { height: 34px; padding: 0 16px; border-radius: 6px; font-size: 13px; }
+.btn-cancel { border: 1px solid #e5e7eb; color: #4e5969; background: #fff; }
+.btn-cancel:hover { background: #f5f6f7; }
+.btn-ok { background: #1677ff; color: #fff; }
+.btn-ok:hover { background: #0e63e0; }
+.btn-ok.danger { background: #f53f3f; }
+.btn-ok.danger:hover { background: #d92c2c; }
+.form-row { margin-bottom: 12px; }
+.form-label { display: block; font-size: 13px; color: #4e5969; margin-bottom: 6px; }
+.form-input {
+  width: 100%; height: 38px; border: 1px solid #e5e7eb; border-radius: 6px;
+  padding: 0 11px; font-size: 16px; outline: none; color: #1f2329; background: #fff;
+}
+.form-input:focus { border-color: #1677ff; }
+.toast {
+  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(10px);
+  background: rgba(31,35,41,.92); color: #fff; padding: 10px 18px; border-radius: 8px;
+  font-size: 13px; opacity: 0; pointer-events: none; transition: all .2s;
+  z-index: 400; max-width: 80%; text-align: center; line-height: 1.5;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.img-viewer { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; z-index: 350; padding: 24px; }
+.img-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+
+/* ---------- 移动端 ---------- */
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+    flex: none; width: auto; height: 58px; flex-direction: row;
+    padding: 0 6px env(safe-area-inset-bottom); border-top: 1px solid rgba(255,255,255,.1);
+  }
+  .sidebar-brand, .sidebar-foot { display: none; }
+  .sidebar-nav { flex-direction: row; padding: 0; gap: 0; align-items: stretch; }
+  .nav-item {
+    flex: 1; flex-direction: column; justify-content: center; gap: 2px;
+    font-size: 11px; padding: 6px 0; border-radius: 0; min-height: 58px;
+  }
+  .nav-item.active { background: transparent; color: #3f9bff; }
+  .main { padding-bottom: 58px; }
+  .content { padding: 12px 12px 32px; }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-title { font-size: 15px; }
+  .icon-btn { width: 44px; height: 44px; }
+  .rec-check-wrap { width: 44px; height: 44px; }
+  .rec-line { gap: 6px; }
+  .rec-content-input { font-size: 16px; }
+  .rec-note-wrap, .rec-photo-wrap { padding-left: 0; }
+  .proj-layout { flex-direction: column; }
+  .proj-menu { flex: none; width: 100%; }
+  .proj-list { flex-direction: row; overflow-x: auto; max-height: none; padding-bottom: 4px; }
+  .proj-item { flex: 0 0 auto; border: 1px solid #eef0f2; }
+  .proj-del { opacity: 1; }
+  .proj-timeline-wrap { width: 100%; padding: 14px; }
+  .chip { height: 34px; }
+  .day-chip { width: 50px; height: 50px; }
+  .ti-tag, .ti-src { display: none; }
+  .ti-btn { height: 34px; padding: 0 14px; }
+  .btn-ghost { height: 34px; }
+  .modal-foot button { height: 44px; }
+  .form-input { height: 44px; }
+  .note-input { height: 44px; }
+}
+@media (max-width: 420px) {
+  .topbar-actions .btn-ghost { padding: 0 8px; font-size: 12px; }
+  .pg-item img { width: 76px; height: 76px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- 左侧导航 -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand-title">个人工作台</span>
+        <span class="brand-sub">Workbench</span>
+      </span>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      <button type="button" class="nav-item active" data-page="todo">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M8 12.5l2 2 4.5-4.5"/></svg>
+        <span>todolist</span>
+      </button>
+      <button type="button" class="nav-item" data-page="project">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2l2 2.4h7.8A2.5 2.5 0 0 1 21 9.9v7.6A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-10Z"/></svg>
+        <span>项目池</span>
+      </button>
+    </nav>
+    <div class="sidebar-foot">数据自动同步 · 多设备可用</div>
+  </aside>
+
+  <div class="main">
+    <!-- 顶栏 -->
+    <header class="topbar">
+      <div class="topbar-title">todolist</div>
+      <div class="topbar-actions">
+        <span class="sync-pill" id="syncPill"><span class="sd"></span><span id="syncText">同步中</span></span>
+        <button type="button" class="btn-ghost" id="btnExport">导出备份</button>
+        <button type="button" class="btn-ghost" id="btnImport">导入恢复</button>
+        <button type="button" class="btn-ghost danger hidden" id="btnClearSeed">清空示例</button>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- ================= todolist ================= -->
+      <section class="page" id="pageTodo">
+        <!-- 时间轴筛选器 -->
+        <div class="card">
+          <div class="tf-row">
+            <span class="tf-label">年</span>
+            <div class="tf-scroll" id="yearBar"></div>
+          </div>
+          <div class="tf-row">
+            <span class="tf-label">月</span>
+            <div class="tf-scroll" id="monthBar"></div>
+          </div>
+          <div class="tf-row">
+            <span class="tf-label">日</span>
+            <div class="tf-scroll" id="dayBar"></div>
+          </div>
+        </div>
+
+        <!-- 日期待办：AI 从记录内容里识别「交期9.16」后，自动落到对应日期 -->
+        <div class="card today-card">
+          <div class="today-head">
+            <span class="today-title" id="todayTitle">今天要处理</span>
+            <span class="today-count" id="todayCount">0 项</span>
+            <span class="today-sub">AI 识别「交期9.16」这类内容后自动生成，按所选日期显示</span>
+          </div>
+          <div class="today-list" id="todayList"></div>
+          <div class="today-more" id="todayMore"></div>
+        </div>
+
+        <!-- 记录区 -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title" id="recListTitle">工作记录</span>
+            <button type="button" class="btn-primary" id="btnAddRecord">+ 新建记录</button>
+          </div>
+          <div class="rec-list" id="recList"></div>
+        </div>
+
+        <!-- 照片预览区 -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">工作照片留痕</span>
+            <span class="card-sub">点击记录右侧的图片图标上传</span>
+          </div>
+          <div class="photo-groups" id="photoGroups"></div>
+        </div>
+      </section>
+
+      <!-- ================= 项目池 ================= -->
+      <section class="page hidden" id="pageProject">
+        <div class="proj-layout">
+          <aside class="proj-menu">
+            <div class="proj-menu-head">
+              <span class="proj-menu-title">项目池</span>
+              <button type="button" class="btn-primary sm" id="btnAddProject">+ 新建</button>
+            </div>
+            <div class="proj-list" id="projList"></div>
+          </aside>
+          <div class="proj-timeline-wrap">
+            <div class="proj-tl-head">
+              <span class="proj-tl-title" id="projTlTitle">项目时间轴</span>
+              <span class="proj-tl-meta" id="projTlMeta"></span>
+            </div>
+            <div class="proj-timeline" id="projTimeline"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- 隐藏的图片选择器（照片字段入口） -->
+<input type="file" id="photoPicker" data-field="photo" accept="image/*" multiple hidden>
+<input type="file" id="jsonPicker" accept=".json,application/json" hidden>
+<input type="file" id="backupPicker" hidden>
+
+<div class="toast" id="toast"></div>
+<div class="mask hidden" id="mask">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<!-- ================= 模板 ================= -->
+<template id="tpl-record">
+  <div class="rec-card" data-rec-id="">
+    <div class="rec-line">
+      <label class="rec-check-wrap">
+        <input type="checkbox" class="rec-check" data-field="done">
+        <span class="rec-check-visual">
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M3 8.4l3.3 3.3L13.2 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </label>
+      <input class="rec-content-input" data-field="content" type="text" placeholder="跟进了 A4168/A4170BOS 9015A 32 交期9.16" autocomplete="off">
+      <span class="rec-code-chip" data-field="code"></span>
+      <div class="rec-icons">
+        <button type="button" class="icon-btn act-note" data-action="toggleNote" title="文字备注">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h11M4 18h7"/></svg>
+        </button>
+        <button type="button" class="icon-btn act-photo" data-action="pickPhoto" title="上传照片">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.6" cy="9.6" r="1.6"/><path d="M21 16.2l-4.8-4.8-3.4 3.4L9.6 11 3 17.4"/></svg>
+        </button>
+        <button type="button" class="icon-btn act-del" data-action="delRecord" title="删除记录">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="rec-note-wrap" data-field="notes" hidden></div>
+    <div class="rec-photo-wrap" data-field="photos" hidden></div>
+    <div class="rec-meta"><span class="rec-date" data-field="date"></span></div>
+  </div>
+</template>
+
+<template id="tpl-note">
+  <div class="note-row">
+    <input class="note-input" data-field="note-input" type="text" placeholder="填写备注或结果" autocomplete="off">
+    <button type="button" class="icon-btn note-ok" data-action="noteConfirm" title="确认">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.6l5 5L20 6.6"/></svg>
+    </button>
+    <button type="button" class="icon-btn note-del" data-action="noteDelete" title="删除备注">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>
+    </button>
+  </div>
+</template>
+
+<template id="tpl-note-add">
+  <button type="button" class="note-add" data-action="noteAdd">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    <span>新增备注</span>
+  </button>
+</template>
+
+<template id="tpl-today-item">
+  <div class="today-item" data-rec-id="">
+    <span class="ti-dot"></span>
+    <span class="ti-text" data-sp-bindable="database" data-sp-database-id="h9msNAPVKdub87r2oqC9sp"></span>
+    <span class="ti-tag" data-sp-bindable="database" data-sp-database-id="h9msNAPVKdub87r2oqC9sp"></span>
+    <span class="ti-src" data-action="gotoRecord" data-sp-bindable="database" data-sp-database-id="h9msNAPVKdub87r2oqC9sp"></span>
+    <button type="button" class="ti-btn" data-action="toggleTodo">完成</button>
+    <button type="button" class="ti-btn ghost" data-action="dropTodo">移除</button>
+  </div>
+</template>
+
+<template id="tpl-project">
+  <div class="proj-item" data-project-id="">
+    <span class="proj-name" data-field="project-name" data-sp-bindable="database" data-sp-database-id="db9pJVoAOFQRkxZKFAVFVv"></span>
+    <span class="proj-supplier" data-field="project-supplier"></span>
+    <span class="proj-created" data-field="project-created"></span>
+    <button type="button" class="proj-del" data-action="delProject" title="删除项目">×</button>
+  </div>
+</template>
+
+<template id="tpl-tl-item">
+  <div class="tl-item">
+    <div class="tl-dot"></div>
+    <div class="tl-body">
+      <div class="tl-head">
+        <span class="tl-date" data-field="tl-date" data-sp-bindable="database" data-sp-database-id="h9msNAPVKdub87r2oqC9sp"></span>
+        <span class="tl-state" data-field="tl-state" data-sp-bindable="database" data-sp-database-id="h9msNAPVKdub87r2oqC9sp"></span>
+      </div>
+      <div class="tl-content" data-field="tl-content" data-sp-bindable="database" data-sp-database-id="h9msNAPVKdub87r2oqC9sp"></div>
+      <div class="tl-notes" data-field="tl-notes"></div>
+      <div class="tl-photos" data-field="tl-photos"></div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-project-form">
+  <div class="proj-form">
+    <div class="form-row">
+      <label class="form-label">项目编号</label>
+      <input class="form-input" data-field="project-code" type="text" placeholder="如：A4470（字母 + 数字，必填）" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <label class="form-label">供应商名称</label>
+      <input class="form-input" data-field="project-supplier" type="text" placeholder="例如：平安行（选填）" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <label class="form-label">创建日期</label>
+      <input class="form-input" data-field="project-created" type="date">
+    </div>
+  </div>
+</template>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =========================================================
+   * 常量
+   * =======================================================*/
+  var DATABASE_ID = 'h9msNAPVKdub87r2oqC9sp';          // 工作记录表
+  var PROJECT_ID = 'db9pJVoAOFQRkxZKFAVFVv';           // 项目池表
+  // 注意：项目池表在 SDK 调用处使用字面量 'db9pJVoAOFQRkxZKFAVFVv'，
+  //      以便静态校验能识别该 databaseId。
+  var LS_CACHE = 'wb_workbench_cache_v1';
+  var LS_SEED = 'wb_workbench_seed_v1';
+  var MAX_PHOTO = 6;
+  var PHOTO_MAX_SIDE = 800;
+
+  /* 在线数据能力（资料库宿主注入）实时探测。
+     注意：__SMART_PAGE__ 由宿主异步注入，不能在脚本执行瞬间做一次性快照，
+     否则注入稍晚就会把整页永久锁死在离线模式。这里每次调用都实时探测。 */
+  function hasDb() {
+    return !!(window.__SMART_PAGE__ && window.__SMART_PAGE__.database);
+  }
+
+  /* =========================================================
+   * 状态
+   * =======================================================*/
+  var state = {
+    records: [],
+    projects: [],
+    sel: null,
+    page: 'todo',
+    activeProject: '',
+    expanded: {},
+    sync: 'syncing',
+    seeded: false,
+    pendingPhotoRec: ''
+  };
+
+  /* =========================================================
+   * 工具函数
+   * =======================================================*/
+  function pad2(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
+  function fmtDate(y, m, d) { return y + '-' + pad2(m) + '-' + pad2(d); }
+  function todayObj() { var t = new Date(); return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate() }; }
+  function todayStr() { var t = todayObj(); return fmtDate(t.y, t.m, t.d); }
+  function selStr() { return fmtDate(state.sel.y, state.sel.m, state.sel.d); }
+  function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
+      if (c === '&') return '&amp;';
+      if (c === '<') return '&lt;';
+      if (c === '>') return '&gt;';
+      if (c === '"') return '&quot;';
+      return '&#39;';
+    });
+  }
+  function dateToNum(s) {
+    if (!s) return 0;
+    var p = String(s).slice(0, 10).split('-');
+    if (p.length !== 3) return 0;
+    return parseInt(p[0], 10) * 10000 + parseInt(p[1], 10) * 100 + parseInt(p[2], 10);
+  }
+  function normDate(v) {
+    if (!v) return '';
+    var s = String(v);
+    if (s.length >= 10 && s.charAt(4) === '-') return s.slice(0, 10);
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return '';
+    return fmtDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  }
+  function displayDate(s) {
+    if (!s) return '';
+    var p = String(s).split('-');
+    if (p.length < 3) return s;
+    return parseInt(p[1], 10) + '月' + parseInt(p[2], 10) + '日';
+  }
+  /* 项目池代码匹配：记录内容里出现了项目池中的项目代码即命中。
+   * 代码不限于 A4470 这种形式，A3690JG、A4168/A4170BOS 等都行，
+   * 命中多个时取最长的（如 A4168/A4170BOS 优先于 A4168）。 */
+  function matchPoolCode(text) {
+    var t = String(text || '').toUpperCase();
+    if (!t) return '';
+    var best = '';
+    for (var i = 0; i < state.projects.length; i++) {
+      var c = String(state.projects[i].code || '').trim().toUpperCase();
+      if (!c || c.length < 2) continue;
+      if (t.indexOf(c) >= 0 && c.length > best.length) best = c;
+    }
+    return best;
+  }
+
+  /* ---------------------------------------------------------
+   * AI 交期识别
+   * 只认「交期9.16 / 交期9月16日 / 交期2026.9.16」这类写法，
+   * 识别后落到对应日期的「要处理」待办里（形如：跟进 A4470 的交期）
+   * -------------------------------------------------------*/
+  function validYmd(y, m, d) {
+    if (!(y >= 1970 && y <= 2999 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return '';
+    var t = new Date(y, m - 1, d);
+    if (t.getFullYear() !== y || t.getMonth() + 1 !== m || t.getDate() !== d) return '';
+    return fmtDate(y, m, d);
+  }
+
+  /* 归一化待办日期（text 字段，存 YYYY-MM-DD） */
+  function normTodoDay(v) {
+    var s = normDate(v);
+    return s && dateToNum(s) > 0 ? s : '';
+  }
+
+  /* 返回 { date: 'YYYY-MM-DD' } 或 null；格式固定为「交期 + 月.日」 */
+  function extractDue(text, baseDate) {
+    var t = String(text || '');
+    if (!t) return null;
+    var m = /交期\s*(?:(\d{4})\s*[-/.年]\s*)?(\d{1,2})\s*[-/.月]\s*(\d{1,2})\s*[日号]?/.exec(t);
+    if (!m) return null;
+    var baseYear = parseInt(String(baseDate || todayStr()).slice(0, 4), 10);
+    var y = m[1] ? parseInt(m[1], 10) : baseYear;
+    var mo = parseInt(m[2], 10);
+    var dd = parseInt(m[3], 10);
+    var hit = validYmd(y, mo, dd);
+    if (!hit && !m[1]) hit = validYmd(y + 1, mo, dd); /* 12月写来年交期 */
+    if (!hit) return null;
+    return { date: hit };
+  }
+
+  /* 生成待办标题：跟进 A4168/A4170BOS 的交期 */
+  function todoTitleOf(code, content) {
+    if (code) return '跟进 ' + String(code).toUpperCase() + ' 的交期';
+    var s = String(content || '').replace(/\s+/g, ' ').trim();
+    var label = s.length > 20 ? s.slice(0, 20) + '…' : s;
+    return label ? '跟进：' + label : '跟进待办事项';
+  }
+
+  function todoTitleOfRec(rec) {
+    return todoTitleOf(rec.code, rec.content);
+  }
+  function splitNotes(s) {
+    if (!s) return [];
+    var arr = String(s).split('\n');
+    var out = [];
+    for (var i = 0; i < arr.length; i++) { if (arr[i].trim() !== '') out.push(arr[i]); }
+    return out;
+  }
+  function parsePhotos(s) {
+    if (!s) return [];
+    try {
+      var a = JSON.parse(s);
+      if (Object.prototype.toString.call(a) === '[object Array]') return a;
+      return [];
+    } catch (e) { return []; }
+  }
+  function findRec(id) {
+    for (var i = 0; i < state.records.length; i++) { if (state.records[i].id === id) return state.records[i]; }
+    return null;
+  }
+  function findProj(id) {
+    for (var i = 0; i < state.projects.length; i++) { if (state.projects[i].id === id) return state.projects[i]; }
+    return null;
+  }
+  function markDb(el, dbId) {
+    if (!el) return el;
+    el.setAttribute('data-sp-bindable', 'database');
+    el.setAttribute('data-sp-database-id', dbId);
+    return el;
+  }
+  function $(id) { return document.getElementById(id); }
+
+  /* =========================================================
+   * 本地缓存（离线兜底层）
+   * =======================================================*/
+  function saveLocal() {
+    try {
+      localStorage.setItem(LS_CACHE, JSON.stringify({
+        records: state.records, projects: state.projects, ts: new Date().getTime()
+      }));
+    } catch (e) { /* 忽略 */ }
+  }
+  /* 兼容旧缓存：补齐待办字段 */
+  function normLocalRec(r) {
+    if (!r) return r;
+    r.todoDate = normTodoDay(r.todoDate);
+    r.todoDone = !!r.todoDone;
+    return r;
+  }
+
+  function loadLocal() {
+    var raw = null;
+    try { raw = localStorage.getItem(LS_CACHE); } catch (e) { return; }
+    if (!raw) return;
+    var migrated = false;
+    try {
+      var obj = JSON.parse(raw);
+      if (obj && obj.records) state.records = obj.records.map(normLocalRec);
+      if (obj && obj.projects) {
+        state.projects = obj.projects.map(function (p) {
+          if (!p) return p;
+          /* 旧缓存兼容：note → supplier */
+          if (p.note !== undefined && p.supplier === undefined) migrated = true;
+          if (!p.supplier) p.supplier = p.note || '';
+          delete p.note;
+          /* 旧缓存：名称与代码不一致时以代码为准 */
+          if (p.code) p.name = p.code;
+          return p;
+        });
+      }
+    } catch (e) { /* 忽略 */ }
+    /* 迁移过一次就写回，避免每次加载都重复转换 */
+    if (migrated) saveLocal();
+  }
+  function hasSeedMark() {
+    try { return localStorage.getItem(LS_SEED) === '1'; } catch (e) { return true; }
+  }
+  function setSeedMark(v) {
+    try {
+      if (v) localStorage.setItem(LS_SEED, '1');
+      else localStorage.removeItem(LS_SEED);
+    } catch (e) { /* 忽略 */ }
+  }
+  function getSeedIds() {
+    var raw = null;
+    try { raw = localStorage.getItem(LS_SEED + '_ids'); } catch (e) { return []; }
+    if (!raw) return [];
+    try { var a = JSON.parse(raw); return Object.prototype.toString.call(a) === '[object Array]' ? a : []; }
+    catch (e) { return []; }
+  }
+  function setSeedIds(ids) {
+    try { localStorage.setItem(LS_SEED + '_ids', JSON.stringify(ids)); } catch (e) { /* 忽略 */ }
+  }
+  function clearAllLocal() {
+    try { localStorage.removeItem(LS_CACHE); } catch (e) { /* 忽略 */ }
+    try { localStorage.removeItem(LS_SEED); } catch (e) { /* 忽略 */ }
+    try { localStorage.removeItem(LS_SEED + '_ids'); } catch (e) { /* 忽略 */ }
+  }
+
+  /* =========================================================
+   * 同步状态
+   * =======================================================*/
+  function setSync(s) {
+    state.sync = s;
+    renderSyncStatus();
+  }
+  function toast(msg) {
+    var el = $('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'toast show';
+    if (toast._t) clearTimeout(toast._t);
+    toast._t = setTimeout(function () { el.className = 'toast'; }, 2800);
+  }
+
+  /* =========================================================
+   * 弹窗
+   * =======================================================*/
+  function closeModal() {
+    $('mask').className = 'mask hidden';
+    $('modalBody').innerHTML = '';
+    $('modalFoot').innerHTML = '';
+  }
+  function openModal(title, bodyNode, actions) {
+    $('modalTitle').textContent = title;
+    var body = $('modalBody');
+    body.innerHTML = '';
+    if (bodyNode) body.appendChild(bodyNode);
+    var foot = $('modalFoot');
+    foot.innerHTML = '';
+    for (var i = 0; i < actions.length; i++) {
+      (function (act) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = act.cls || 'btn-cancel';
+        b.textContent = act.text;
+        b.onclick = function () { act.onClick(); };
+        foot.appendChild(b);
+      })(actions[i]);
+    }
+    $('mask').className = 'mask';
+  }
+  function confirmModal(title, message, okText, onOk) {
+    var p = document.createElement('div');
+    p.innerHTML = esc(message).replace(/\n/g, '<br>');
+    openModal(title, p, [
+      { text: '取消', cls: 'btn-cancel', onClick: closeModal },
+      { text: okText || '确定', cls: 'btn-ok danger', onClick: function () { closeModal(); onOk(); } }
+    ]);
+  }
+  function cloneTpl(id) {
+    var tpl = $(id);
+    if (!tpl) return null;
+    var kids = tpl.content.children;
+    if (!kids.length) return null;
+    /* 模板含多个根元素时必须包一层容器，否则 querySelector 只能命中第一个根元素内部 */
+    if (kids.length > 1) {
+      var wrap = document.createElement('div');
+      wrap.className = 'tpl-group';
+      wrap.appendChild(tpl.content.cloneNode(true));
+      return wrap;
+    }
+    return kids[0].cloneNode(true);
+  }
+
+  /* =========================================================
+   * 数据层
+   * =======================================================*/
+  function mapRecord(row) {
+    return {
+      id: row._id || row.record_id || '',
+      content: row['工作内容'] || '',
+      done: !!row['完成状态'],
+      code: row['项目编号'] || '',
+      notes: splitNotes(row['备注']),
+      photos: parsePhotos(row['照片']),
+      date: normDate(row['记录日期']),
+      todoDate: normTodoDay(row['待办日期']),
+      todoDone: !!row['待办状态']
+    };
+  }
+  function mapProject(row) {
+    return {
+      id: row._id || row.record_id || '',
+      name: row['项目名称'] || row['项目编号'] || '',
+      code: row['项目编号'] || row['项目名称'] || '',
+      /* 供应商名称（字段由「项目备注」改名而来，历史数据仍在该字段上） */
+      supplier: row['供应商名称'] || '',
+      created: normDate(row['创建日期'])
+    };
+  }
+
+  /* ---------- 离线暂存记录的补传 ---------- */
+  var flushing = false;
+  function isLocalRec(r) { return !!(r && r.local); }
+  function removeLocalRec(id) {
+    var out = [];
+    for (var i = 0; i < state.records.length; i++) {
+      if (state.records[i].id !== id) out.push(state.records[i]);
+    }
+    state.records = out;
+    saveLocal();
+  }
+  function pendingList() {
+    var out = [];
+    for (var i = 0; i < state.records.length; i++) {
+      if (isLocalRec(state.records[i])) out.push(state.records[i]);
+    }
+    return out;
+  }
+  /* 把离线期间暂存在本机的记录逐条补传到云端 */
+  function syncPending(cb) {
+    var pend = pendingList();
+    if (!pend.length || flushing || !hasDb()) { if (cb) cb(false); return; }
+    flushing = true;
+    setSync('syncing');
+    var idx = 0;
+    function step() {
+      if (idx >= pend.length) {
+        flushing = false;
+        if (cb) cb(true);
+        return;
+      }
+      var r = pend[idx]; idx++;
+      var properties = {};
+      properties['工作内容'] = { text: r.content || '' };
+      properties['完成状态'] = { checkbox: !!r.done };
+      properties['项目编号'] = { text: r.code || '' };
+      properties['备注'] = { text: (r.notes || []).join('\n') };
+      properties['照片'] = { text: JSON.stringify(r.photos || []) };
+      properties['记录日期'] = { date: r.date };
+      properties['待办日期'] = { text: r.todoDate || '' };
+      properties['待办状态'] = { checkbox: !!r.todoDone };
+      window.__SMART_PAGE__.database.addRecord({ databaseId: 'h9msNAPVKdub87r2oqC9sp', properties: properties })
+        .then(function () { removeLocalRec(r.id); step(); })
+        .catch(function () { step(); });
+    }
+    step();
+  }
+
+  function loadAll(cb) {
+    if (!hasDb()) {
+      loadLocal();
+      setSync('offline');
+      if (cb) cb();
+      return;
+    }
+    setSync('syncing');
+    var pend = pendingList();
+    window.__SMART_PAGE__.database.query({ databaseId: 'h9msNAPVKdub87r2oqC9sp', pageSize: 500 })
+      .then(function (res) {
+        state.records = ((res && res.results) || []).map(mapRecord).concat(pend);
+        return window.__SMART_PAGE__.database.query({ databaseId: 'db9pJVoAOFQRkxZKFAVFVv', pageSize: 500 });
+      })
+      .then(function (res2) {
+        state.projects = ((res2 && res2.results) || []).map(mapProject);
+        saveLocal();
+        if (cb) cb();
+        if (!pend.length) { setSync('synced'); return; }
+        toast('正在同步本机暂存的 ' + pend.length + ' 条记录…');
+        syncPending(function (did) {
+          if (did) loadAll(function () { refreshAll(); });
+        });
+      })
+      .catch(function (err) {
+        if (window.console && console.warn) console.warn('[database] 数据加载失败，切换离线模式', err);
+        loadLocal();
+        setSync('offline');
+        if (cb) cb();
+      });
+  }
+
+  /* ---------- 离线写入支持：本机暂存 ---------- */
+  function localId(prefix) {
+    return (prefix || 'local') + '_' + new Date().getTime() + '_' + Math.floor(Math.random() * 1000);
+  }
+  function findRec(id) {
+    for (var i = 0; i < state.records.length; i++) {
+      if (state.records[i].id === id) return state.records[i];
+    }
+    return null;
+  }
+  /* 把 properties 形式的补丁反解回记录对象字段（离线时使用） */
+  function applyPatchToState(rec, patch) {
+    if (!rec || !patch) return;
+    if (patch['工作内容']) rec.content = patch['工作内容'].text || '';
+    if (patch['完成状态']) rec.done = !!patch['完成状态'].checkbox;
+    if (patch['项目编号']) rec.code = patch['项目编号'].text || '';
+    if (patch['备注']) rec.notes = splitNotes(patch['备注'].text);
+    if (patch['照片']) rec.photos = parsePhotos(patch['照片'].text);
+    if (patch['记录日期']) rec.date = normDate(patch['记录日期'].date);
+    if (patch['待办日期']) rec.todoDate = normTodoDay(patch['待办日期'].text);
+    if (patch['待办状态']) rec.todoDone = !!patch['待办状态'].checkbox;
+  }
+
+  function createRecord(content, dateStr, cb) {
+    if (!hasDb()) {
+      /* 离线：存本机，联网后由 syncPending 自动补传 */
+      state.records.unshift({
+        id: localId('rec'), content: content || '', done: false, code: '',
+        notes: [], photos: [], date: dateStr, todoDate: '', todoDone: false, local: true
+      });
+      saveLocal();
+      toast('离线模式：已存本机，联网后自动同步');
+      if (cb) cb();
+      return;
+    }
+    var properties = {};
+    properties['工作内容'] = { text: content || '' };
+    properties['完成状态'] = { checkbox: false };
+    properties['项目编号'] = { text: '' };
+    properties['备注'] = { text: '' };
+    properties['照片'] = { text: '[]' };
+    properties['记录日期'] = { date: dateStr };
+    properties['待办日期'] = { text: '' };
+    properties['待办状态'] = { checkbox: false };
+    window.__SMART_PAGE__.database.addRecord({ databaseId: 'h9msNAPVKdub87r2oqC9sp', properties: properties })
+      .then(function () { if (cb) cb(); })
+      .catch(function (err) {
+        if (window.console && console.warn) console.warn('[database] 新建失败', err);
+        toast('新建失败，请稍后重试');
+      });
+  }
+
+  function patchRecord(recId, patch, cb) {
+    var localRec = findRec(recId);
+    if (!hasDb() || isLocalRec(localRec)) {
+      /* 离线 / 尚未上传的记录：直接改本机数据 */
+      applyPatchToState(localRec, patch);
+      saveLocal();
+      if (cb) cb();
+      return;
+    }
+    window.__SMART_PAGE__.database.updateRecord({ databaseId: 'h9msNAPVKdub87r2oqC9sp', recordId: recId, properties: patch })
+      .then(function () { saveLocal(); if (cb) cb(); })
+      .catch(function (err) {
+        if (window.console && console.warn) console.warn('[database] 更新失败', err);
+        applyPatchToState(findRec(recId), patch);
+        saveLocal();
+        toast('云端同步失败，已暂存本机');
+        if (cb) cb();
+      });
+  }
+
+  function removeRecord(recId, cb) {
+    var localRec = findRec(recId);
+    if (!hasDb() || isLocalRec(localRec)) {
+      state.records = state.records.filter(function (r) { return r.id !== recId; });
+      saveLocal();
+      toast('已删除（本机）');
+      if (cb) cb();
+      return;
+    }
+    window.__SMART_PAGE__.database.deleteRecord({ databaseId: 'h9msNAPVKdub87r2oqC9sp', recordId: recId })
+      .then(function () { if (cb) cb(); })
+      .catch(function (err) {
+        if (window.console && console.warn) console.warn('[database] 删除失败', err);
+        toast('删除失败，请稍后重试');
+      });
+  }
+
+  function removeProject(projId, cb) {
+    var proj = findProj(projId);
+    if (!hasDb() || !proj || proj.local) {
+      state.projects = state.projects.filter(function (p) { return p.id !== projId; });
+      if (state.activeProject === projId) state.activeProject = '';
+      saveLocal();
+      if (cb) cb();
+      return;
+    }
+    window.__SMART_PAGE__.database.deleteRecord({ databaseId: 'db9pJVoAOFQRkxZKFAVFVv', recordId: projId })
+      .then(function () { if (cb) cb(); })
+      .catch(function (err) {
+        if (window.console && console.warn) console.warn('[database] 删除项目失败', err);
+        toast('删除项目失败，请稍后重试');
+      });
+  }
+
+  function deleteProject(projId) {
+    var proj = findProj(projId);
+    if (!proj) return;
+    var name = proj.code || proj.name || '该项目';
+    confirmModal('删除项目', '确定要删除项目 ' + name + ' 吗？\n已同步的工作记录仍会保留在 todolist 中，只是不再出现在项目池里。', '删除', function () {
+      removeProject(projId, function () {
+        loadAll(function () {
+          refreshAll();
+          toast('项目 ' + name + ' 已删除');
+        });
+      });
+    });
+  }
+
+  function createProject(code, supplier, dateStr, cb) {
+    code = String(code || '').toUpperCase();
+    supplier = String(supplier || '').trim();
+    if (!hasDb()) {
+      state.projects.push({
+        id: localId('proj'), name: code, code: code, supplier: supplier, created: dateStr, local: true
+      });
+      saveLocal();
+      toast('离线模式：已存本机，联网后自动同步');
+      if (cb) cb();
+      return;
+    }
+    var properties = {};
+    /* 名称就是代码；供应商名称选填，例如「平安行」 */
+    properties['项目名称'] = { text: code };
+    properties['项目编号'] = { text: code };
+    properties['供应商名称'] = { text: supplier };
+    properties['创建日期'] = { date: dateStr };
+    window.__SMART_PAGE__.database.addRecord({ databaseId: 'db9pJVoAOFQRkxZKFAVFVv', properties: properties })
+      .then(function () { if (cb) cb(); })
+      .catch(function (err) {
+        if (window.console && console.warn) console.warn('[database] 建项目失败', err);
+        toast('新建项目失败，请稍后重试');
+      });
+  }
+  /* =========================================================
+   * AI 筛查：识别项目池里的项目代码 → 同步时间轴；识别「交期」→ 生成待办
+   * 规则：只认项目池中已创建的代码，没命中就不做任何操作（不弹窗、不新建）
+   * =======================================================*/
+  function onContentCommit(rec) {
+    if (!rec) return;
+    var content = String(rec.content || '');
+    var code = matchPoolCode(content);
+    var due = extractDue(content, rec.date);
+    var oldTodo = rec.todoDate || '';
+    var newTodo = due ? due.date : '';
+
+    var properties = {};
+    properties['工作内容'] = { text: content };
+    if (code !== String(rec.code || '').toUpperCase()) properties['项目编号'] = { text: code };
+    /* 识别出的交期变了才动待办，避免每次编辑都重置完成状态 */
+    if (newTodo !== oldTodo) {
+      properties['待办日期'] = { text: newTodo };
+      properties['待办状态'] = { checkbox: false };
+    }
+
+    patchRecord(rec.id, properties, function () {
+      loadAll(function () {
+        refreshAll();
+        var msgs = [];
+        if (code) msgs.push('已识别 ' + code + '，已同步到项目时间轴');
+        if (due) {
+          var label = todoTitleOf(code, content);
+          msgs.push(due.date === todayStr()
+            ? '交期为今天，已加入「今天要处理」：' + label
+            : '识别到交期 ' + displayDate(due.date) + '，已写入该日「要处理」：' + label);
+        } else if (oldTodo && !newTodo) {
+          msgs.push('内容中已无交期，该记录的待办已取消');
+        }
+        if (msgs.length) toast(msgs.join('；'));
+      });
+    });
+  }
+
+  /* =========================================================
+   * 新建 / 编辑项目
+   * =======================================================*/
+  function openProjectForm(code, supplier) {
+    var node = cloneTpl('tpl-project-form');
+    if (!node) return;
+    node.querySelector('[data-field="project-code"]').value = code || '';
+    node.querySelector('[data-field="project-supplier"]').value = supplier || '';
+    var dateInput = node.querySelector('[data-field="project-created"]');
+    dateInput.value = todayStr();
+    openModal('新建项目', node, [
+      { text: '取消', cls: 'btn-cancel', onClick: closeModal },
+      {
+        text: '创建', cls: 'btn-ok', onClick: function () {
+          var c = node.querySelector('[data-field="project-code"]').value.trim().toUpperCase();
+          var n = node.querySelector('[data-field="project-supplier"]').value.trim();
+          var d = node.querySelector('[data-field="project-created"]').value || todayStr();
+          if (!c) { toast('请填写项目编号，如 A4470'); return; }
+          closeModal();
+          createProject(c, n, d, function () {
+            loadAll(function () {
+              state.activeProject = '';
+              refreshAll();
+              toast('项目已创建，同编号的记录会自动进入该项目时间轴');
+            });
+          });
+        }
+      }
+    ]);
+  }
+
+  /* =========================================================
+   * 示例数据（首次打开预置，含 1 条逾期 + 1 张演示留痕照片）
+   * =======================================================*/
+  var DEMO_PHOTO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="300" viewBox="0 0 480 300">' +
+    '<rect width="480" height="300" fill="#eef3fb"/>' +
+    '<rect width="480" height="40" fill="#1677ff"/>' +
+    '<text x="16" y="26" font-family="sans-serif" font-size="14" fill="#ffffff">\u8054\u8c03\u7ed3\u679c \u00b7 interface-joint-test.log</text>' +
+    '<text x="16" y="80" font-family="monospace" font-size="13" fill="#1f2329">GET  /api/device/list    200   32ms</text>' +
+    '<text x="16" y="108" font-family="monospace" font-size="13" fill="#1f2329">POST /api/park/entry     200   68ms</text>' +
+    '<text x="16" y="136" font-family="monospace" font-size="13" fill="#1f2329">POST /api/alarm/report   200  121ms</text>' +
+    '<text x="16" y="168" font-family="monospace" font-size="13" fill="#1677ff">PASS  3/3 cases passed</text>' +
+    '<line x1="16" y1="196" x2="464" y2="196" stroke="#c9d8ef"/>' +
+    '<text x="16" y="228" font-family="sans-serif" font-size="12" fill="#5b6b7f">\u8054\u8c03\u73af\u5883\uff1a\u6d4b\u8bd5\u96c6\u7fa4 / 2026-09-14</text>' +
+    '<text x="16" y="252" font-family="sans-serif" font-size="12" fill="#5b6b7f">\u5de5\u4f5c\u7559\u75d5\uff1a\u8054\u8c03\u7ed3\u679c\u622a\u56fe</text>' +
+    '</svg>';
+
+  function demoPhotoDataUrl() {
+    try {
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(DEMO_PHOTO_SVG);
+    } catch (e) { return ''; }
+  }
+
+  function seedDemoData(done) {
+    var t = todayObj();
+    var today = fmtDate(t.y, t.m, t.d);
+    var d = new Date(t.y, t.m - 1, t.d);
+    d.setDate(d.getDate() - 1);
+    var y1 = fmtDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    d.setDate(d.getDate() - 3);
+    var y3 = fmtDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    var tmr = new Date(t.y, t.m - 1, t.d);
+    tmr.setDate(tmr.getDate() + 1);
+    var tm = fmtDate(tmr.getFullYear(), tmr.getMonth() + 1, tmr.getDate());
+
+    /* 名称即代码；「供应商名称」选填（如 平安行） */
+    var projects = [
+      ['A4470', '平安行'],
+      ['B2210', '云启数据']
+    ];
+    /* 交期文案格式固定为「交期M.D」 */
+    var dueToday = t.m + '.' + t.d;
+    var dueTm = (tmr.getMonth() + 1) + '.' + tmr.getDate();
+    var y1p = y1.split('-');
+    var dueY1 = parseInt(y1p[1], 10) + '.' + parseInt(y1p[2], 10);
+    var recs = [
+      { c: '跟进了 A4470 平安行的接口联调，交期' + dueToday, dt: today, done: true, code: 'A4470', notes: ['已与研发确认联调环境，明天出联调结果'], photo: true, todo: today, todoDone: true },
+      { c: '跟进了 A4470 的验收材料整理，交期' + dueToday, dt: today, done: false, code: 'A4470', notes: ['验收清单已列出 12 项，还差 3 项'], todo: today, todoDone: false },
+      { c: '跟进了 B2210 云启数据的报表口径确认，交期' + dueTm, dt: today, done: false, code: 'B2210', notes: [], todo: tm, todoDone: false },
+      { c: '跟进了 C9930 客户回访，交期' + dueY1, dt: y1, done: false, code: '', notes: ['客户反馈待整理'], todo: y1, todoDone: false },
+      { c: '参加了项目周会并整理纪要', dt: y3, done: true, code: '', notes: [], todo: '', todoDone: false }
+    ];
+
+    var i = 0;
+    var ids = [];
+
+    /* 离线：示例数据直接写本机暂存，保证首屏不空白 */
+    if (!hasDb()) {
+      var ps = [];
+      for (var a = 0; a < projects.length; a++) {
+        ps.push({ id: localId('proj'), name: projects[a][0], code: projects[a][0], supplier: projects[a][1], created: today, local: true });
+      }
+      var rs = [];
+      for (var b = 0; b < recs.length; b++) {
+        var rr = recs[b];
+        rs.push({
+          id: localId('rec'), content: rr.c, done: !!rr.done, code: rr.code,
+          notes: rr.notes.slice(0), photos: rr.photo ? [demoPhotoDataUrl()] : [],
+          date: rr.dt, todoDate: rr.todo || '', todoDone: !!rr.todoDone, local: true
+        });
+      }
+      state.projects = ps.concat(state.projects);
+      state.records = rs.concat(state.records);
+      saveLocal();
+      var seedIdList = [];
+      for (var c = 0; c < ps.length; c++) seedIdList.push(ps[c].id);
+      for (var e = 0; e < rs.length; e++) seedIdList.push(rs[e].id);
+      setSeedIds(seedIdList);
+      setSeedMark(true);
+      if (done) done();
+      return;
+    }
+
+    function nextProject() {
+      if (i >= projects.length) { i = 0; nextRecord(); return; }
+      var p = projects[i];
+      i++;
+      if (!hasDb()) { nextProject(); return; }
+      var pp = {};
+      pp['项目名称'] = { text: p[0] };
+      pp['项目编号'] = { text: p[0] };
+      pp['供应商名称'] = { text: p[1] || '' };
+      pp['创建日期'] = { date: today };
+      window.__SMART_PAGE__.database.addRecord({ databaseId: 'db9pJVoAOFQRkxZKFAVFVv', properties: pp })
+        .then(function () { nextProject(); })
+        .catch(function () { nextProject(); });
+    }
+    function nextRecord() {
+      if (i >= recs.length) {
+        setSeedIds(ids);
+        setSeedMark(true);
+        if (done) done();
+        return;
+      }
+      var r = recs[i];
+      i++;
+      if (!hasDb()) { nextRecord(); return; }
+      var properties = {};
+      properties['工作内容'] = { text: r.c };
+      properties['完成状态'] = { checkbox: r.done };
+      properties['项目编号'] = { text: r.code };
+      properties['备注'] = { text: r.notes.join('\n') };
+      properties['照片'] = { text: JSON.stringify(r.photo ? [demoPhotoDataUrl()] : []) };
+      properties['记录日期'] = { date: r.dt };
+      properties['待办日期'] = { text: r.todo || '' };
+      properties['待办状态'] = { checkbox: !!r.todoDone };
+      window.__SMART_PAGE__.database.addRecord({ databaseId: 'h9msNAPVKdub87r2oqC9sp', properties: properties })
+        .then(function (res) {
+          if (res && res.id) ids.push(res.id);
+          nextRecord();
+        })
+        .catch(function () { nextRecord(); });
+    }
+    nextProject();
+  }
+
+  /* =========================================================
+   * 渲染层（只读 state，写各自 DOM，互不调用）
+   * =======================================================*/
+  function renderSyncStatus() {
+    var pill = $('syncPill');
+    var txt = $('syncText');
+    if (!pill || !txt) return;
+    var map = {
+      syncing: ['sync-pill syncing', '同步中'],
+      synced: ['sync-pill synced', '已同步'],
+      offline: ['sync-pill offline', '本机模式']
+    };
+    var cfg = map[state.sync] || map.syncing;
+    pill.className = cfg[0];
+    txt.textContent = cfg[1];
+    pill.title = cfg[1] === '本机模式'
+      ? '未连接在线数据能力，数据保存在本机；恢复连接后会自动同步'
+      : '数据已与云端同步';
+  }
+
+  function renderTopbar() {
+    var title = document.querySelector('.topbar-title');
+    if (title) title.textContent = state.page === 'todo' ? 'todolist' : '项目池';
+    var items = $('sidebarNav').querySelectorAll('.nav-item');
+    for (var i = 0; i < items.length; i++) {
+      items[i].className = 'nav-item' + (items[i].getAttribute('data-page') === state.page ? ' active' : '');
+    }
+    $('pageTodo').className = state.page === 'todo' ? 'page' : 'page hidden';
+    $('pageProject').className = state.page === 'project' ? 'page' : 'page hidden';
+    var seedBtn = $('btnClearSeed');
+    if (hasSeedMark() && getSeedIds().length) seedBtn.className = 'btn-ghost danger';
+    else seedBtn.className = 'btn-ghost danger hidden';
+  }
+
+  function renderYearBar() {
+    var box = $('yearBar');
+    if (!box) return;
+    box.innerHTML = '';
+    var cur = state.sel.y;
+    for (var y = cur - 3; y <= cur + 2; y++) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (y === cur ? ' active' : '');
+      b.setAttribute('data-action', 'pickYear');
+      b.setAttribute('data-v', String(y));
+      b.textContent = y + ' 年';
+      box.appendChild(b);
+    }
+  }
+
+  function renderMonthBar() {
+    var box = $('monthBar');
+    if (!box) return;
+    box.innerHTML = '';
+    for (var m = 1; m <= 12; m++) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip' + (m === state.sel.m ? ' active' : '');
+      b.setAttribute('data-action', 'pickMonth');
+      b.setAttribute('data-v', String(m));
+      b.textContent = m + ' 月';
+      box.appendChild(b);
+    }
+  }
+
+  function renderDayBar() {
+    var box = $('dayBar');
+    if (!box) return;
+    box.innerHTML = '';
+    var y = state.sel.y, m = state.sel.m;
+    var total = daysInMonth(y, m);
+    var todayS = todayStr();
+    var hasRec = {};
+    var hasTodo = {};
+    for (var i = 0; i < state.records.length; i++) {
+      if (state.records[i].date) hasRec[state.records[i].date] = true;
+      var td = state.records[i].todoDate;
+      if (td && !state.records[i].todoDone) hasTodo[td] = true;
+    }
+    var wk = ['日', '一', '二', '三', '四', '五', '六'];
+    for (var d = 1; d <= total; d++) {
+      var ds = fmtDate(y, m, d);
+      var w = new Date(y, m - 1, d).getDay();
+      var b = document.createElement('button');
+      b.type = 'button';
+      var cls = 'chip day-chip';
+      if (d === state.sel.d) cls += ' active';
+      if (ds === todayS) cls += ' today';
+      b.className = cls;
+      b.setAttribute('data-action', 'pickDay');
+      b.setAttribute('data-v', String(d));
+      var num = document.createElement('span');
+      num.className = 'dc-num';
+      num.textContent = String(d);
+      var wkEl = document.createElement('span');
+      wkEl.className = 'dc-wk';
+      wkEl.textContent = wk[w];
+      b.appendChild(num);
+      b.appendChild(wkEl);
+      if (hasTodo[ds]) {
+        var tdot = document.createElement('span');
+        tdot.className = 'dc-dot todo';
+        tdot.title = '有待处理事项';
+        b.appendChild(tdot);
+      } else if (hasRec[ds]) {
+        var dot = document.createElement('span');
+        dot.className = 'dc-dot';
+        b.appendChild(dot);
+      }
+      box.appendChild(b);
+    }
+    var active = box.querySelector('.day-chip.active');
+    if (active && active.scrollIntoView) {
+      try { active.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) { /* 忽略 */ }
+    }
+  }
+
+  /* 「今天要处理」= AI 识别出的待办，严格按所选日期显示 */
+  function renderTodaySection() {
+    var box = $('todayList');
+    if (!box) return;
+    box.innerHTML = '';
+    var ds = selStr();
+    var isToday = ds === todayStr();
+    var titleEl = $('todayTitle');
+    if (titleEl) titleEl.textContent = isToday ? '今天要处理' : displayDate(ds) + ' 要处理';
+
+    var list = [];
+    for (var i = 0; i < state.records.length; i++) {
+      if (state.records[i].todoDate === ds) list.push(state.records[i]);
+    }
+    list.sort(function (a, b) {
+      if (!!a.todoDone !== !!b.todoDone) return a.todoDone ? 1 : -1;
+      return dateToNum(a.date) - dateToNum(b.date);
+    });
+
+    var open = 0;
+    for (var j = 0; j < list.length; j++) { if (!list[j].todoDone) open++; }
+    var cnt = $('todayCount');
+    if (!list.length) { cnt.textContent = '0 项'; cnt.className = 'today-count zero'; }
+    else if (!open) { cnt.textContent = '全部完成'; cnt.className = 'today-count all-done'; }
+    else { cnt.textContent = open + ' 项'; cnt.className = 'today-count'; }
+    markDb(cnt, DATABASE_ID);
+
+    if (!list.length) {
+      var tip = isToday
+        ? '今天没有要处理的事项。<br>在记录里写上 <b>「交期9.20」</b> 这类内容，AI 会自动在对应日期生成待办。'
+        : displayDate(ds) + ' 没有待处理事项。';
+      box.innerHTML = '<div class="today-empty">' + tip + '</div>';
+      renderTodoFooter(ds, isToday);
+      return;
+    }
+
+    for (var k = 0; k < list.length; k++) {
+      var rec = list[k];
+      var node = cloneTpl('tpl-today-item');
+      if (!node) return;
+      node.setAttribute('data-rec-id', rec.id);
+      if (rec.todoDone) node.className = 'today-item done';
+      var txt = node.querySelector('.ti-text');
+      var tagEl = node.querySelector('.ti-tag');
+      var srcEl = node.querySelector('.ti-src');
+      var btn = node.querySelector('.ti-btn');
+      markDb(txt, DATABASE_ID);
+      markDb(tagEl, DATABASE_ID);
+      markDb(srcEl, DATABASE_ID);
+      txt.textContent = todoTitleOfRec(rec);
+      tagEl.textContent = '交期';
+      srcEl.textContent = '源 ' + displayDate(rec.date);
+      btn.textContent = rec.todoDone ? '撤销' : '完成';
+      box.appendChild(node);
+    }
+    renderTodoFooter(ds, isToday);
+  }
+
+  /* 只在「今天」视图下，给一条更早日期未处理待办的入口（不复制内容） */
+  function renderTodoFooter(ds, isToday) {
+    var more = $('todayMore');
+    if (!more) return;
+    more.innerHTML = '';
+    if (!isToday) return;
+    var late = [];
+    for (var i = 0; i < state.records.length; i++) {
+      var r = state.records[i];
+      if (r.todoDate && !r.todoDone && dateToNum(r.todoDate) < dateToNum(ds)) late.push(r);
+    }
+    if (!late.length) return;
+    late.sort(function (a, b) { return dateToNum(a.todoDate) - dateToNum(b.todoDate); });
+    var span = document.createElement('span');
+    span.className = 'tm-text';
+    span.textContent = '另有 ' + late.length + ' 项更早日期的待办未处理';
+    more.appendChild(span);
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tm-btn';
+    b.setAttribute('data-action', 'jumpTodo');
+    b.setAttribute('data-date', late[0].todoDate);
+    b.textContent = '查看 ' + displayDate(late[0].todoDate);
+    more.appendChild(b);
+  }
+
+  function renderRecordList() {
+    var box = $('recList');
+    if (!box) return;
+    var ds = selStr();
+    $('recListTitle').textContent = ds + ' 的工作记录';
+    box.innerHTML = '';
+    var list = [];
+    for (var i = 0; i < state.records.length; i++) {
+      if (state.records[i].date === ds) list.push(state.records[i]);
+    }
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">这一天还没有记录。<br>点击右上角「新建记录」，或在上面的时间轴上切到别的日期看看。</div>';
+      return;
+    }
+    for (var k = 0; k < list.length; k++) box.appendChild(buildRecordNode(list[k]));
+  }
+
+  function buildRecordNode(rec) {
+    var node = cloneTpl('tpl-record');
+    node.setAttribute('data-rec-id', rec.id);
+    if (rec.done) node.className = 'rec-card done';
+    var cb = node.querySelector('.rec-check');
+    cb.checked = rec.done;
+    cb.setAttribute('data-rec-id', rec.id);
+    var input = node.querySelector('.rec-content-input');
+    input.value = rec.content;
+    input.setAttribute('data-rec-id', rec.id);
+    var chip = node.querySelector('.rec-code-chip');
+    if (rec.code) { chip.textContent = rec.code; chip.className = 'rec-code-chip show'; }
+    node.querySelector('.rec-date').textContent = rec.date;
+    node.querySelector('.rec-date').setAttribute('data-sp-bindable', 'database');
+    node.querySelector('.rec-date').setAttribute('data-sp-database-id', DATABASE_ID);
+
+    var noteWrap = node.querySelector('.rec-note-wrap');
+    noteWrap.setAttribute('data-rec-id', rec.id);
+    var noteInput = node.querySelector('.note-input');
+    if (noteInput) noteInput.setAttribute('data-rec-id', rec.id);
+    if (state.expanded[rec.id]) {
+      noteWrap.removeAttribute('hidden');
+      node.querySelector('.act-note').className = 'icon-btn act-note on';
+      for (var n = 0; n < rec.notes.length; n++) {
+        noteWrap.appendChild(buildNoteRow(rec, n, rec.notes[n]));
+      }
+      var addNode = cloneTpl('tpl-note-add');
+      if (addNode) noteWrap.appendChild(addNode);
+    }
+
+    var photoWrap = node.querySelector('.rec-photo-wrap');
+    if (rec.photos.length) {
+      photoWrap.removeAttribute('hidden');
+      for (var p = 0; p < rec.photos.length; p++) {
+        var img = document.createElement('img');
+        img.className = 'rec-thumb';
+        img.src = rec.photos[p];
+        img.setAttribute('data-action', 'previewPhoto');
+        img.setAttribute('data-rec-id', rec.id);
+        img.setAttribute('data-photo-index', String(p));
+        img.alt = '工作照片';
+        photoWrap.appendChild(img);
+      }
+    }
+    return node;
+  }
+
+  function buildNoteRow(rec, index, text) {
+    var row = cloneTpl('tpl-note');
+    row.setAttribute('data-rec-id', rec.id);
+    row.setAttribute('data-note-index', String(index));
+    var input = row.querySelector('.note-input');
+    input.value = text;
+    input.setAttribute('data-rec-id', rec.id);
+    input.setAttribute('data-note-index', String(index));
+    return row;
+  }
+
+  function renderPhotoArea() {
+    var box = $('photoGroups');
+    if (!box) return;
+    box.innerHTML = '';
+    var ds = selStr();
+    var list = [];
+    for (var i = 0; i < state.records.length; i++) {
+      var r = state.records[i];
+      if (r.date === ds && r.photos.length) list.push(r);
+    }
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">当天还没有工作照片。点击某条记录右侧的图片图标，即可为该条工作内容上传照片留痕。</div>';
+      return;
+    }
+    for (var k = 0; k < list.length; k++) {
+      var rec = list[k];
+      var group = document.createElement('div');
+      group.className = 'photo-group';
+      group.setAttribute('data-rec-id', rec.id);
+      var head = document.createElement('div');
+      head.className = 'pg-head';
+      head.textContent = rec.content || '(未填写内容)';
+      markDb(head, DATABASE_ID);
+      var body = document.createElement('div');
+      body.className = 'pg-body';
+      for (var p = 0; p < rec.photos.length; p++) {
+        var item = document.createElement('div');
+        item.className = 'pg-item';
+        var img = document.createElement('img');
+        img.src = rec.photos[p];
+        img.alt = '工作照片';
+        img.setAttribute('data-action', 'previewPhoto');
+        img.setAttribute('data-rec-id', rec.id);
+        img.setAttribute('data-photo-index', String(p));
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'pg-del';
+        del.textContent = '×';
+        del.title = '删除照片';
+        del.setAttribute('data-action', 'delPhoto');
+        del.setAttribute('data-rec-id', rec.id);
+        del.setAttribute('data-photo-index', String(p));
+        item.appendChild(img);
+        item.appendChild(del);
+        body.appendChild(item);
+      }
+      group.appendChild(head);
+      group.appendChild(body);
+      box.appendChild(group);
+    }
+  }
+
+  function renderProjectMenu() {
+    var box = $('projList');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!state.projects.length) {
+      box.innerHTML = '<div class="empty" style="padding:14px 8px;font-size:12px">还没有项目</div>';
+      return;
+    }
+    var active = state.activeProject || state.projects[0].id;
+    for (var i = 0; i < state.projects.length; i++) {
+      var p = state.projects[i];
+      var node = cloneTpl('tpl-project');
+      node.setAttribute('data-project-id', p.id);
+      if (p.id === active) node.className = 'proj-item active';
+      markDb(node.querySelector('.proj-name'), PROJECT_ID);
+      node.querySelector('.proj-name').textContent = p.code || p.name || '未命名项目';
+      var noteEl = node.querySelector('.proj-supplier');
+      if (p.supplier) {
+        markDb(noteEl, PROJECT_ID);
+        noteEl.textContent = p.supplier;
+      } else {
+        noteEl.style.display = 'none';
+      }
+      node.querySelector('.proj-created').textContent = p.created;
+      box.appendChild(node);
+    }
+  }
+
+  function renderProjectTimeline() {
+    var box = $('projTimeline');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!state.projects.length) {
+      $('projTlTitle').textContent = '项目时间轴';
+      $('projTlMeta').textContent = '';
+      box.innerHTML = '<div class="empty">先去左侧新建一个项目。<br>之后在 todolist 里填写带项目编号的记录（如 A4470），系统会自动同步到对应项目的时间轴。</div>';
+      return;
+    }
+    var active = state.activeProject;
+    var proj = findProj(active);
+    if (!proj) { proj = state.projects[0]; state.activeProject = proj.id; }
+    $('projTlTitle').textContent = proj.code || proj.name || '未命名项目';
+    var code = String(proj.code || '').toUpperCase();
+    var list = [];
+    for (var i = 0; i < state.records.length; i++) {
+      if (code && String(state.records[i].code || '').toUpperCase() === code) list.push(state.records[i]);
+    }
+    list.sort(function (a, b) { return dateToNum(b.date) - dateToNum(a.date); });
+    var meta = $('projTlMeta');
+    meta.textContent = (proj.supplier ? proj.supplier + ' · ' : '') + '共 ' + list.length + ' 条同步记录';
+    markDb(meta, PROJECT_ID);
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">该项目还没有同步记录。<br>在 todolist 中填写包含编号 <b>' + esc(proj.code || '') + '</b> 的工作内容后，会自动出现在这里。</div>';
+      return;
+    }
+    for (var k = 0; k < list.length; k++) {
+      var rec = list[k];
+      var node = cloneTpl('tpl-tl-item');
+      if (!node) return;
+      if (rec.done) node.className = 'tl-item tl-done';
+      var dateEl = node.querySelector('.tl-date');
+      dateEl.textContent = rec.date;
+      markDb(dateEl, DATABASE_ID);
+      var stEl = node.querySelector('.tl-state');
+      stEl.textContent = rec.done ? '已完成' : '进行中';
+      markDb(stEl, DATABASE_ID);
+      var cEl = node.querySelector('.tl-content');
+      cEl.textContent = rec.content || '(未填写内容)';
+      markDb(cEl, DATABASE_ID);
+      var notesEl = node.querySelector('.tl-notes');
+      for (var n = 0; n < rec.notes.length; n++) {
+        var nEl = document.createElement('div');
+        nEl.className = 'tl-note';
+        nEl.textContent = rec.notes[n];
+        notesEl.appendChild(nEl);
+      }
+      var photosEl = node.querySelector('.tl-photos');
+      for (var p = 0; p < rec.photos.length; p++) {
+        var img = document.createElement('img');
+        img.src = rec.photos[p];
+        img.alt = '工作照片';
+        img.setAttribute('data-action', 'previewPhoto');
+        img.setAttribute('data-rec-id', rec.id);
+        img.setAttribute('data-photo-index', String(p));
+        photosEl.appendChild(img);
+      }
+      box.appendChild(node);
+    }
+  }
+
+  function refreshAll() {
+    renderSyncStatus();
+    renderTopbar();
+    renderYearBar();
+    renderMonthBar();
+    renderDayBar();
+    renderTodaySection();
+    renderRecordList();
+    renderPhotoArea();
+    renderProjectMenu();
+    renderProjectTimeline();
+  }
+  /* =========================================================
+   * 照片：压缩 + 上传
+   * =======================================================*/
+  function compressImage(file) {
+    return new Promise(function (resolve) {
+      if (!file || !/^image\//.test(file.type || '')) { resolve(''); return; }
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          var w = img.width, h = img.height;
+          if (w > PHOTO_MAX_SIDE || h > PHOTO_MAX_SIDE) {
+            if (w >= h) { h = Math.round(h * PHOTO_MAX_SIDE / w); w = PHOTO_MAX_SIDE; }
+            else { w = Math.round(w * PHOTO_MAX_SIDE / h); h = PHOTO_MAX_SIDE; }
+          }
+          try {
+            var cv = document.createElement('canvas');
+            cv.width = w; cv.height = h;
+            var ctx = cv.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(cv.toDataURL('image/jpeg', 0.72));
+          } catch (e) { resolve(''); }
+        };
+        img.onerror = function () { resolve(''); };
+        img.src = ev.target.result;
+      };
+      reader.onerror = function () { resolve(''); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function savePhotoField(rec, cb) {
+    var properties = {};
+    properties['照片'] = { text: JSON.stringify(rec.photos) };
+    patchRecord(rec.id, properties, cb);
+  }
+
+  function onPhotoChosen() {
+    var picker = $('photoPicker');
+    var files = picker.files;
+    var rec = findRec(state.pendingPhotoRec);
+    if (!files || !files.length || !rec) { picker.value = ''; return; }
+    if (rec.photos.length + files.length > MAX_PHOTO) {
+      toast('单条记录最多 ' + MAX_PHOTO + ' 张照片，当前已有 ' + rec.photos.length + ' 张');
+      picker.value = '';
+      return;
+    }
+    var tasks = [];
+    for (var i = 0; i < files.length; i++) tasks.push(compressImage(files[i]));
+    picker.value = '';
+    Promise.all(tasks).then(function (list) {
+      var ok = [];
+      for (var j = 0; j < list.length; j++) { if (list[j]) ok.push(list[j]); }
+      if (!ok.length) { toast('图片读取失败，请换一张试试'); return; }
+      rec.photos = rec.photos.concat(ok);
+      savePhotoField(rec, function () {
+        refreshAll();
+        toast('已为该条工作内容上传 ' + ok.length + ' 张照片');
+      });
+    });
+  }
+
+  function pickPhotoFor(recId) {
+    state.pendingPhotoRec = recId;
+    var picker = $('photoPicker');
+    picker.value = '';
+    picker.click();
+  }
+
+  function deletePhoto(recId, index) {
+    var rec = findRec(recId);
+    if (!rec) return;
+    confirmModal('删除照片', '确定要删除这张工作照片吗？删除后无法恢复。', '删除', function () {
+      rec.photos.splice(index, 1);
+      savePhotoField(rec, function () { refreshAll(); toast('照片已删除'); });
+    });
+  }
+
+  function previewPhoto(recId, index) {
+    var rec = findRec(recId);
+    if (!rec || !rec.photos[index]) return;
+    var viewer = document.createElement('div');
+    viewer.className = 'img-viewer';
+    var img = document.createElement('img');
+    img.src = rec.photos[index];
+    img.alt = '工作照片';
+    viewer.appendChild(img);
+    viewer.onclick = function () {
+      if (viewer.parentNode) viewer.parentNode.removeChild(viewer);
+    };
+    document.body.appendChild(viewer);
+  }
+
+  /* =========================================================
+   * 记录操作
+   * =======================================================*/
+  function toggleRecordDone(recId, checked) {
+    var rec = findRec(recId);
+    if (!rec) return;
+    rec.done = !!checked;
+    var properties = {};
+    properties['完成状态'] = { checkbox: !!checked };
+    patchRecord(recId, properties, function () { refreshAll(); });
+  }
+
+  function deleteRecord(recId) {
+    confirmModal('删除记录', '确定要删除这条工作记录吗？记录里的备注和照片会一并删除，且无法恢复。', '删除', function () {
+      removeRecord(recId, function () { loadAll(function () { refreshAll(); toast('记录已删除'); }); });
+    });
+  }
+
+  function toggleNotePanel(recId) {
+    state.expanded[recId] = !state.expanded[recId];
+    refreshAll();
+  }
+
+  function addNoteRow(recId) {
+    var rec = findRec(recId);
+    if (!rec) return;
+    rec.notes.push('');
+    state.expanded[recId] = true;
+    refreshAll();
+    var card = document.querySelector('.rec-card[data-rec-id="' + recId + '"]');
+    if (card) {
+      var rows = card.querySelectorAll('.note-row');
+      if (rows.length) {
+        var last = rows[rows.length - 1].querySelector('.note-input');
+        if (last) last.focus();
+      }
+    }
+  }
+
+  function saveNote(recId, index, text) {
+    var rec = findRec(recId);
+    if (!rec) return;
+    text = String(text || '').trim();
+    var notes = [];
+    for (var i = 0; i < rec.notes.length; i++) {
+      if (i === index) { if (text) notes.push(text); }
+      else if (String(rec.notes[i]).trim() !== '') notes.push(rec.notes[i]);
+    }
+    rec.notes = notes;
+    var properties = {};
+    properties['备注'] = { text: notes.join('\n') };
+    patchRecord(recId, properties, function () {
+      refreshAll();
+      if (text) toast('备注已保存');
+    });
+  }
+
+  function removeNote(recId, index) {
+    var rec = findRec(recId);
+    if (!rec) return;
+    var notes = [];
+    for (var i = 0; i < rec.notes.length; i++) {
+      if (i !== index && String(rec.notes[i]).trim() !== '') notes.push(rec.notes[i]);
+    }
+    rec.notes = notes;
+    var properties = {};
+    properties['备注'] = { text: notes.join('\n') };
+    patchRecord(recId, properties, function () { refreshAll(); toast('备注已删除'); });
+  }
+
+  /* =========================================================
+   * 日期 / 导航
+   * =======================================================*/
+  function pickYear(y) {
+    state.sel.y = y;
+    var total = daysInMonth(state.sel.y, state.sel.m);
+    if (state.sel.d > total) state.sel.d = total;
+    refreshAll();
+  }
+  function pickMonth(m) {
+    state.sel.m = m;
+    var total = daysInMonth(state.sel.y, state.sel.m);
+    if (state.sel.d > total) state.sel.d = total;
+    refreshAll();
+  }
+  function pickDay(d) {
+    state.sel.d = d;
+    refreshAll();
+  }
+  function switchPage(p) {
+    state.page = p;
+    refreshAll();
+  }
+
+  /* =========================================================
+   * 导出 / 导入备份
+   * =======================================================*/
+  function exportBackup() {
+    var data = {
+      app: 'personal-workbench',
+      exportedAt: new Date().toISOString(),
+      records: state.records,
+      projects: state.projects
+    };
+    try {
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = '工作台备份-' + todayStr() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+      toast('备份已导出（' + state.records.length + ' 条记录）');
+    } catch (e) {
+      toast('导出失败，请更换浏览器重试');
+    }
+  }
+
+  function importBackup(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var data = null;
+      try { data = JSON.parse(ev.target.result); } catch (e) { toast('文件格式不正确'); return; }
+      if (!data || !data.records) { toast('文件里没有找到工作记录'); return; }
+      var recs = data.records || [];
+      var projs = data.projects || [];
+      if (!hasDb()) {
+        toast('离线模式：将导入到本机，联网后自动同步');
+      }
+      confirmModal('导入恢复', '将导入 ' + recs.length + ' 条工作记录、' + projs.length + ' 个项目。\n导入内容会追加到现有数据中，不会覆盖已有记录。', '开始导入', function () {
+        runImport(projs, recs);
+      });
+    };
+    reader.readAsDataURL ? reader.readAsText(file) : reader.readAsText(file);
+  }
+
+  function runImport(projs, recs) {
+    /* 离线：导入内容写入本机暂存 */
+    if (!hasDb()) {
+      var a, addP = [], addR = [];
+      for (a = 0; a < projs.length; a++) {
+        addP.push({
+          id: localId('proj'), name: projs[a].code || projs[a].name || '', code: projs[a].code || projs[a].name || '',
+          supplier: projs[a].supplier || projs[a].note || '', created: projs[a].created || todayStr(), local: true
+        });
+      }
+      for (a = 0; a < recs.length; a++) {
+        var r0 = recs[a];
+        addR.push({
+          id: localId('rec'), content: r0.content || '', done: !!r0.done, code: r0.code || '',
+          notes: r0.notes || [], photos: r0.photos || [], date: r0.date || todayStr(),
+          todoDate: r0.todoDate || '', todoDone: !!r0.todoDone, local: true
+        });
+      }
+      state.projects = state.projects.concat(addP);
+      state.records = state.records.concat(addR);
+      saveLocal();
+      refreshAll();
+      toast('已导入到本机（离线），联网后自动同步');
+      return;
+    }
+    var pi = 0, ri = 0;
+    toast('正在导入，请稍候…');
+    function stepProject() {
+      if (pi >= projs.length) { stepRecord(); return; }
+      var p = projs[pi]; pi++;
+      var properties = {};
+      properties['项目名称'] = { text: p.code || p.name || '' };
+      properties['项目编号'] = { text: p.code || p.name || '' };
+      properties['供应商名称'] = { text: p.supplier || p.note || '' };
+      properties['创建日期'] = { date: p.created || todayStr() };
+      window.__SMART_PAGE__.database.addRecord({ databaseId: 'db9pJVoAOFQRkxZKFAVFVv', properties: properties })
+        .then(stepProject)
+        .catch(stepProject);
+    }
+    function stepRecord() {
+      if (ri >= recs.length) {
+        loadAll(function () { refreshAll(); toast('导入完成'); });
+        return;
+      }
+      var r = recs[ri]; ri++;
+      var properties = {};
+      properties['工作内容'] = { text: r.content || '' };
+      properties['完成状态'] = { checkbox: !!r.done };
+      properties['项目编号'] = { text: r.code || '' };
+      properties['备注'] = { text: (r.notes || []).join('\n') };
+      properties['照片'] = { text: JSON.stringify(r.photos || []) };
+      properties['记录日期'] = { date: r.date || todayStr() };
+      properties['待办日期'] = { text: r.todoDate || '' };
+      properties['待办状态'] = { checkbox: !!r.todoDone };
+      window.__SMART_PAGE__.database.addRecord({ databaseId: 'h9msNAPVKdub87r2oqC9sp', properties: properties })
+        .then(stepRecord)
+        .catch(stepRecord);
+    }
+    stepProject();
+  }
+
+  function clearSeedData() {
+    var ids = getSeedIds();
+    if (!ids.length) { toast('没有可清理的示例数据'); return; }
+    confirmModal('清空示例数据', '将删除 ' + ids.length + ' 条示例记录（你后来新建的记录不受影响）。', '清空', function () {
+      var i = 0;
+      function step() {
+        if (i >= ids.length) {
+          setSeedIds([]);
+          setSeedMark(false);
+          loadAll(function () { refreshAll(); toast('示例数据已清空'); });
+          return;
+        }
+        var id = ids[i]; i++;
+        var lr = findRec(id);
+        var isLocalTarget = lr ? isLocalRec(lr) : (id.indexOf('rec_') === 0 || id.indexOf('proj_') === 0);
+        if (!hasDb() || isLocalTarget) {
+          state.records = state.records.filter(function (r) { return r.id !== id; });
+          state.projects = state.projects.filter(function (p) { return p.id !== id; });
+          saveLocal();
+          step();
+          return;
+        }
+        window.__SMART_PAGE__.database.deleteRecord({ databaseId: 'h9msNAPVKdub87r2oqC9sp', recordId: id }).then(step).catch(step);
+      }
+      step();
+    });
+  }
+
+  /* =========================================================
+   * 事件绑定
+   * =======================================================*/
+  function closestAttr(el, attr, stopClass) {
+    var cur = el;
+    while (cur && cur !== document.body) {
+      if (cur.getAttribute && cur.getAttribute(attr)) return cur.getAttribute(attr);
+      cur = cur.parentNode;
+    }
+    return '';
+  }
+
+  function bindNav() {
+    $('sidebarNav').addEventListener('click', function (e) {
+      var btn = e.target;
+      while (btn && btn !== this && !(btn.getAttribute && btn.getAttribute('data-page'))) btn = btn.parentNode;
+      if (btn && btn !== this && btn.getAttribute) {
+        var p = btn.getAttribute('data-page');
+        if (p) switchPage(p);
+      }
+    });
+  }
+
+  function bindFilter() {
+    document.addEventListener('click', function (e) {
+      var el = e.target;
+      while (el && el !== document.body && !(el.getAttribute && el.getAttribute('data-action'))) el = el.parentNode;
+      if (!el || el === document.body || !el.getAttribute) return;
+      var action = el.getAttribute('data-action');
+      var v = el.getAttribute('data-v');
+      if (action === 'pickYear') pickYear(parseInt(v, 10));
+      else if (action === 'pickMonth') pickMonth(parseInt(v, 10));
+      else if (action === 'pickDay') pickDay(parseInt(v, 10));
+    });
+  }
+
+  function bindRecordArea() {
+    var box = $('recList');
+
+    box.addEventListener('click', function (e) {
+      var el = e.target;
+      while (el && el !== box && !(el.getAttribute && el.getAttribute('data-action'))) el = el.parentNode;
+      if (el && el !== box && el.getAttribute) {
+        var action = el.getAttribute('data-action');
+        var recId = closestAttr(el, 'data-rec-id');
+        if (action === 'toggleNote') { toggleNotePanel(recId); return; }
+        if (action === 'pickPhoto') { pickPhotoFor(recId); return; }
+        if (action === 'delRecord') { deleteRecord(recId); return; }
+        if (action === 'noteAdd') { addNoteRow(recId); return; }
+        if (action === 'noteConfirm') {
+          var row = el;
+          while (row && row !== box && !(row.className && String(row.className).indexOf('note-row') >= 0)) row = row.parentNode;
+          var idx = row && row.getAttribute ? parseInt(row.getAttribute('data-note-index'), 10) : -1;
+          var inp = row ? row.querySelector('.note-input') : null;
+          if (idx >= 0 && inp) saveNote(recId, idx, inp.value);
+          return;
+        }
+        if (action === 'noteDelete') {
+          var row2 = el;
+          while (row2 && row2 !== box && !(row2.className && String(row2.className).indexOf('note-row') >= 0)) row2 = row2.parentNode;
+          var idx2 = row2 && row2.getAttribute ? parseInt(row2.getAttribute('data-note-index'), 10) : -1;
+          if (idx2 >= 0) removeNote(recId, idx2);
+          return;
+        }
+        if (action === 'previewPhoto') {
+          previewPhoto(recId, parseInt(el.getAttribute('data-photo-index'), 10));
+          return;
+        }
+      }
+      // 新建记录按钮
+      var addBtn = e.target;
+      while (addBtn && addBtn !== box && addBtn.id !== 'btnAddRecord') addBtn = addBtn.parentNode;
+    });
+
+    box.addEventListener('input', function (e) {
+      var t = e.target;
+      if (!t || !t.className) return;
+      var recId = t.getAttribute ? (t.getAttribute('data-rec-id') || closestAttr(t, 'data-rec-id')) : '';
+      var rec = findRec(recId);
+      if (!rec) return;
+      if (String(t.className).indexOf('rec-content-input') >= 0) rec.content = t.value;
+      else if (String(t.className).indexOf('note-input') >= 0) {
+        var row = t;
+        while (row && row !== box && !(row.className && String(row.className).indexOf('note-row') >= 0)) row = row.parentNode;
+        var idx = row && row.getAttribute ? parseInt(row.getAttribute('data-note-index'), 10) : -1;
+        if (idx >= 0) rec.notes[idx] = t.value;
+      }
+    });
+
+    box.addEventListener('change', function (e) {
+      var t = e.target;
+      if (!t || !t.className) return;
+      var recId = t.getAttribute ? (t.getAttribute('data-rec-id') || closestAttr(t, 'data-rec-id')) : '';
+      if (String(t.className).indexOf('rec-check') >= 0) toggleRecordDone(recId, t.checked);
+      else if (String(t.className).indexOf('rec-content-input') >= 0) {
+        var rec = findRec(recId);
+        if (rec) onContentCommit(rec);
+      }
+    });
+  }
+
+  /* 跳到指定日期（跨年月也正确） */
+  function gotoDate(s) {
+    var d = normDate(s);
+    if (!d) return;
+    state.sel.y = parseInt(d.slice(0, 4), 10);
+    state.sel.m = parseInt(d.slice(5, 7), 10);
+    state.sel.d = parseInt(d.slice(8, 10), 10);
+    refreshAll();
+  }
+
+  function bindTodayArea() {
+    $('todayList').addEventListener('click', function (e) {
+      var el = e.target;
+      while (el && el !== this && !(el.getAttribute && el.getAttribute('data-action'))) el = el.parentNode;
+      if (!el || el === this || !el.getAttribute) return;
+      var action = el.getAttribute('data-action');
+      var card = el;
+      while (card && card !== this && !(card.getAttribute && card.getAttribute('data-rec-id'))) card = card.parentNode;
+      var rec = (card && card !== this && card.getAttribute) ? findRec(card.getAttribute('data-rec-id')) : null;
+      if (!rec) return;
+      if (action === 'toggleTodo') {
+        var next = !rec.todoDone;
+        var title = todoTitleOfRec(rec);
+        patchRecord(rec.id, { '待办状态': { checkbox: next } }, function () {
+          loadAll(function () { refreshAll(); });
+          toast(next ? '已完成：' + title : '已撤销完成标记');
+        });
+      } else if (action === 'dropTodo') {
+        patchRecord(rec.id, { '待办日期': { text: '' }, '待办状态': { checkbox: false } }, function () {
+          loadAll(function () { refreshAll(); });
+          toast('已移除该条待办（不影响工作记录）');
+        });
+      } else if (action === 'gotoRecord') {
+        gotoDate(rec.date);
+      }
+    });
+    $('todayMore').addEventListener('click', function (e) {
+      var el = e.target;
+      if (!el || !el.getAttribute || el.getAttribute('data-action') !== 'jumpTodo') return;
+      gotoDate(el.getAttribute('data-date'));
+    });
+  }
+
+  function bindPhotoArea() {
+    $('photoGroups').addEventListener('click', function (e) {
+      var el = e.target;
+      while (el && el !== this && !(el.getAttribute && el.getAttribute('data-action'))) el = el.parentNode;
+      if (!el || el === this || !el.getAttribute) return;
+      var action = el.getAttribute('data-action');
+      var recId = el.getAttribute('data-rec-id') || closestAttr(el, 'data-rec-id');
+      var idx = parseInt(el.getAttribute('data-photo-index'), 10);
+      if (action === 'previewPhoto') previewPhoto(recId, idx);
+      else if (action === 'delPhoto') deletePhoto(recId, idx);
+    });
+  }
+
+  function bindProjectArea() {
+    $('projList').addEventListener('click', function (e) {
+      var actEl = e.target;
+      while (actEl && actEl !== this && !(actEl.getAttribute && actEl.getAttribute('data-action'))) actEl = actEl.parentNode;
+      if (actEl && actEl !== this && actEl.getAttribute && actEl.getAttribute('data-action') === 'delProject') {
+        var delHost = actEl;
+        while (delHost && delHost !== this && !(delHost.getAttribute && delHost.getAttribute('data-project-id'))) delHost = delHost.parentNode;
+        if (delHost && delHost !== this && delHost.getAttribute && delHost.getAttribute('data-project-id')) {
+          deleteProject(delHost.getAttribute('data-project-id'));
+        }
+        return;
+      }
+      var el = e.target;
+      while (el && el !== this && !(el.getAttribute && el.getAttribute('data-project-id'))) el = el.parentNode;
+      if (!el || el === this || !el.getAttribute) return;
+      state.activeProject = el.getAttribute('data-project-id');
+      refreshAll();
+    });
+    $('projTimeline').addEventListener('click', function (e) {
+      var el = e.target;
+      if (!el || !el.getAttribute) return;
+      var action = el.getAttribute('data-action');
+      if (action === 'previewPhoto') {
+        previewPhoto(el.getAttribute('data-rec-id'), parseInt(el.getAttribute('data-photo-index'), 10));
+      }
+    });
+  }
+
+  function bindTopbar() {
+    $('btnExport').addEventListener('click', exportBackup);
+    $('btnImport').addEventListener('click', function () { $('jsonPicker').value = ''; $('jsonPicker').click(); });
+    $('jsonPicker').addEventListener('change', function () {
+      if (this.files && this.files[0]) importBackup(this.files[0]);
+    });
+    $('btnClearSeed').addEventListener('click', clearSeedData);
+    $('btnAddRecord').addEventListener('click', function () {
+      var ds = selStr();
+      createRecord('', ds, function () {
+        loadAll(function () {
+          refreshAll();
+          var cards = document.querySelectorAll('.rec-card');
+          if (cards.length) {
+            var lastCard = cards[cards.length - 1];
+            var inp = lastCard.querySelector('.rec-content-input');
+            if (inp) inp.focus();
+          }
+        });
+      });
+    });
+    $('btnAddProject').addEventListener('click', function () { openProjectForm('', ''); });
+    $('photoPicker').addEventListener('change', onPhotoChosen);
+    $('mask').addEventListener('click', function (e) {
+      if (e.target === this) closeModal();
+    });
+  }
+
+  /* =========================================================
+   * 初始化
+   * =======================================================*/
+  /* 宿主的在线数据能力是异步注入的：探测到首次可用时自动补一次同步 */
+  function watchOnline() {
+    var had = hasDb();
+    window.setInterval(function () {
+      var now = hasDb();
+      if (now && !had) {
+        had = true;
+        loadAll(function () { refreshAll(); });
+      } else if (!now && had) {
+        had = false;
+        setSync('offline');
+        renderSyncStatus();
+      }
+    }, 3000);
+  }
+
+  function init() {
+    var t = todayObj();
+    state.sel = { y: t.y, m: t.m, d: t.d };
+
+    bindNav();
+    bindFilter();
+    bindRecordArea();
+    bindTodayArea();
+    bindPhotoArea();
+    bindProjectArea();
+    bindTopbar();
+
+    var waited = 0;
+    var STEP = 150;
+    var MAX_WAIT = 3000;
+
+    function boot() {
+      /* 在线能力稍晚注入时先等一下，避免误判为离线 */
+      if (!hasDb() && waited < MAX_WAIT) {
+        waited += STEP;
+        window.setTimeout(boot, STEP);
+        return;
+      }
+      if (!hasDb()) {
+        loadLocal();
+        setSync('offline');
+        refreshAll();
+        toast('未检测到在线数据能力，已切换为本地模式（数据保存在本机）');
+        if (!state.records.length && !state.projects.length && !hasSeedMark() && !getSeedIds().length) {
+          seedDemoData(function () { refreshAll(); toast('已为你预置示例数据，可直接上手体验'); });
+        }
+        watchOnline();
+        return;
+      }
+      loadAll(function () {
+        refreshAll();
+        if (!state.records.length && !state.projects.length && !hasSeedMark() && !getSeedIds().length) {
+          seedDemoData(function () {
+            loadAll(function () { refreshAll(); toast('已为你预置示例数据，可直接上手体验'); });
+          });
+        }
+      });
+      watchOnline();
+    }
+    boot();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
